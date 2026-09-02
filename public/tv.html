@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MineStream TV</title>
+  <link rel="icon" href="/img/tv-icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="tv-body">
+  <div class="screen fullscreen" id="screen">
+    <div id="media-host"></div>
+    <img id="idle" src="/img/idle.png" alt="No signal" draggable="false" />
+    <div class="onair-badge pixel" id="onair-badge"><span class="dot"></span>ON AIR</div>
+    <div class="screen-label" id="screen-label"></div>
+    <div class="scanlines" id="scanlines"></div>
+    <div class="reconnect pixel hidden" id="reconnect">RECONNECTING<span class="blink">...</span></div>
+  </div>
+  <div id="toasts" class="toasts"></div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/tv.js"></script>
+</body>
+</html>
