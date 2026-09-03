@@ -88,6 +88,14 @@ set minestream.volume 2       -- speaker volume (0–3)
 - **Letterboxing** — the GIF keeps its true aspect ratio (monitor cells aren't square!) with black bars, no more squash/stretch.
 - **Scale 0.5 by default** — 4x the pixels. Set `minestream.scale 1` if you prefer giant chunky pixels.
 
+### Free Spotify account?
+Spotify only lets **Premium** accounts control playback (play/skip/seek) - that's their rule, not ours. On free you still get the full now-playing display and playlists, plus two MineStream extras:
+- **Preview buttons** in playlists play each track's 30-second clip right in the page.
+- The **Radio**: paste any direct `.mp3` / `.ogg` / `.wav` link and it plays for everyone in the browser (press **Listen in browser**) *and* on in-game CC speakers.
+
+### How Minecraft frames get built
+Your **browser** does it, not the server: when a Minecraft monitor needs a GIF that isn't prepared yet, any open website tab decodes the GIF with Chrome's native decoder, picks the 16 colours, dithers the frames and uploads the tiny finished result. The server just stores it (disk-cached, instant after that). No Chrome tab around? The server falls back to doing it itself - slower on Render free, with a live counter on the monitor either way.
+
 ### Slow first decode?
 Render free runs on 1/10th of a CPU, so a huge GIF's first decode can take a little while - the monitor shows a live elapsed counter while it works. MineStream budgets the work, subsamples oversized GIFs (full loop kept, lower fps), and **caches the result on disk**, so every following play (and every server restart) is instant. Watch the `[cc-gif]` lines in the Render logs to see it work.
 

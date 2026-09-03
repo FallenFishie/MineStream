@@ -86,17 +86,33 @@
           <code id="cc-cmd">wget run &lt;this server&gt;/cc/minestream.lua</code>
           <button class="btn small" id="cc-copy" type="button">Copy</button>
         </div>
+        <div class="build-row">
+          <button class="btn small primary" id="btn-cc-build" type="button">&#128421; Build current GIF for Minecraft</button>
+          <span id="cc-build-status" class="hint">Minecraft frames are built by this page automatically.</span>
+        </div>
+
+        <div class="radio-sep"></div>
+
+        <div class="panel-head">
+          <h2 class="pixel">RADIO</h2>
+          <span class="hint">music for free accounts!</span>
+        </div>
         <div class="radio-row">
           <form id="radio-form" class="air-form">
-            <input id="radio-url" placeholder="Radio for the CC speakers — direct .mp3 / .wav / .ogg link" autocomplete="off" spellcheck="false" />
+            <input id="radio-url" placeholder="Direct .mp3 / .wav / .ogg link" autocomplete="off" spellcheck="false" />
             <button class="btn primary" type="submit">Play</button>
           </form>
           <button class="btn danger" id="radio-stop" type="button" title="Stop the radio">Stop</button>
         </div>
         <div id="radio-status" class="hint radio-status">Radio is off</div>
+        <div class="radio-buttons">
+          <button class="btn small primary" id="btn-listen" type="button" hidden>&#128266; Listen in browser</button>
+          <button class="btn small ghost" id="btn-mute" type="button" hidden>&#9209; Stop listening</button>
+        </div>
         <p class="hint cc-note">
+          The radio plays in the browser (press Listen) <b>and</b> on in-game CC speakers.
           Monitors show GIFs in 16-colour dithered widescreen (videos stay web-only).
-          Speakers stream radio links; Spotify shows title + progress on the monitor — its audio stays in Spotify apps (DRM).
+          Spotify shows title + progress on the monitor &mdash; its audio stays in Spotify apps (DRM).
           In-game keys: <b>Q</b> quit, <b>-</b>/<b>=</b> volume.
         </p>
       </div>
@@ -176,5 +192,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/ccbuild.js"></script>
 </body>
 </html>

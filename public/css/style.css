@@ -502,6 +502,23 @@ body.crt .scanlines, .screen.crt .scanlines { display: block; }
 
 /* ---------------------------------------------------------- CC panel */
 
+.build-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.radio-sep { height: 4px; background: rgba(0, 0, 0, 0.4); border-bottom: 3px solid var(--border); margin: 14px 0 12px; }
+.radio-buttons { display: flex; gap: 8px; margin-top: 6px; }
+.track .pv-btn {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  line-height: 22px;
+  text-align: center;
+  background: linear-gradient(#5fae39, var(--green-dark));
+  border: 2px solid #000;
+  color: #fff;
+  font-size: 11px;
+}
+.track .pv-btn:hover { background: linear-gradient(#6fc244, #459730); }
+
+/* ---------------------------------------------------------- CC panel */
+
 .cc-steps { margin: 2px 0 8px; color: #cfcfcf; }
 .codebox {
   display: flex;

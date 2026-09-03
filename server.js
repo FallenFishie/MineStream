@@ -26,7 +26,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e6 });
 spotify.init(io);
-ccHub.init(server);
+ccHub.init(server, io);
 spotify.onNow = () => ccHub.spotifyPush();
 
 function radioToClients(s) {
@@ -308,7 +308,43 @@ app.post('/api/radio/stop', (req, res) => {
   res.json({ ok: true });
 });
 
+// Browser-built Minecraft profiles (the browser has a real CPU; Render free doesn't)
+const ccAssemble = new Map(); // socket -> { url, w, h, frames: [] }
+
+function acceptCcProfile(socket) {
+  const a = ccAssemble.get(socket);
+  if (!a) return;
+  ccAssemble.delete(socket);
+  try {
+    ccGif.injectBuilt(a.url, a.w, a.h, {
+      status: 'ready',
+      frames: a.frames,
+      timeline: a.timeline,
+      total: a.total,
+      palette: a.palette,
+      box: a.box,
+    });
+  } catch (e) {
+    console.error('[cc] browser profile rejected:', e.message);
+  }
+}
+
+app.post('/api/cc/need', (req, res) => {
+  const url = state.onAir && state.onAir.url;
+  if (!url) return res.json({ sizes: [] });
+  const sizes = ccHub.sizes();
+  for (const s of sizes) {
+    const [w, h] = s.split('x').map(Number);
+    ccHub.emitNeed(url, w, h);
+  }
+  res.json({ sizes, url });
+});
+
 // ------------------------------------------------------------------ sockets
+
+// Web-browser radio listeners: same chunked PCM the CC speakers get,
+// but streamed over socket.io so the web TV can play it too (free-friendly).
+const webListeners = new Map(); // socket -> cursor
 
 io.on('connection', (socket) => {
   viewers++;
@@ -317,11 +353,64 @@ io.on('connection', (socket) => {
   socket.emit('radio:state', ccRadio.status());
   const now = spotify.currentNow();
   if (now) socket.emit('spotify:now', now);
+
+  socket.on('cc:profile-start', ({ url, w, h } = {}) => {
+    if (!url || !Number.isInteger(w) || !Number.isInteger(h)) return;
+    ccAssemble.set(socket, { url: String(url).slice(0, 500), w, h, frames: [] });
+  });
+  socket.on('cc:profile-part', ({ url, w, h, frames } = {}) => {
+    const a = ccAssemble.get(socket);
+    if (!a || a.url !== url || a.w !== w || a.h !== h || !Array.isArray(frames)) return;
+    if (a.frames.length + frames.length > 200) { ccAssemble.delete(socket); return; }
+    a.frames.push(...frames);
+  });
+  socket.on('cc:profile-end', ({ url, w, h, palette, timeline, total, box } = {}) => {
+    const a = ccAssemble.get(socket);
+    if (!a || a.url !== url || a.w !== w || a.h !== h) return;
+    a.palette = palette;
+    a.timeline = timeline;
+    a.total = total;
+    a.box = box;
+    acceptCcProfile(socket);
+  });
+
+  socket.on('radio:listen', () => {
+    if (!ccRadio.status().playing) return;
+    socket.msAudioCursor = Math.max(0, ccRadio.currentChunkIndex() - 1);
+    webListeners.set(socket, true);
+  });
+  socket.on('radio:mute', () => {
+    webListeners.delete(socket);
+    socket.msAudioCursor = -1;
+  });
   socket.on('disconnect', () => {
     viewers = Math.max(0, viewers - 1);
+    webListeners.delete(socket);
     broadcastGif();
   });
 });
+
+// pace audio chunks to browser listeners (mirrors the CC hub logic)
+setInterval(() => {
+  if (!ccRadio.status().playing) {
+    for (const s of webListeners.keys()) s.msAudioCursor = -1;
+    webListeners.clear();
+    return;
+  }
+  const cur = ccRadio.currentChunkIndex();
+  for (const s of webListeners.keys()) {
+    if (typeof s.msAudioCursor !== 'number' || s.msAudioCursor < 0) s.msAudioCursor = Math.max(0, cur - 1);
+    if (cur - s.msAudioCursor > 5) s.msAudioCursor = cur;
+    let burst = 0;
+    while (s.msAudioCursor <= cur && burst < 8) {
+      const d = ccRadio.chunkBase64(s.msAudioCursor);
+      if (!d) break;
+      s.emit('ra', { i: s.msAudioCursor, d });
+      s.msAudioCursor++;
+      burst++;
+    }
+  }
+}, 200).unref();
 
 // ------------------------------------------------------------------ go
 

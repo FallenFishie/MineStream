@@ -4,6 +4,7 @@
 const $ = (s) => document.querySelector(s);
 
 const socket = io();
+window.socket = socket; // used by ccbuild.js
 let gif = null;          // { onAir, gallery, log, rotation, viewers }
 let spStatus = null;     // spotify status payload
 let nowData = null;      // now playing payload
@@ -469,15 +470,35 @@ function renderPlaylist() {
     row.append(idx, art, m, dur);
     row.title = 'Play "' + t.name + '"';
     row.addEventListener('click', () => {
+      if (t.preview && !premium()) return playPreview(t.preview, t.name);
       spotifyControl('playTrack', {
         contextUri: pl.contextUri,
         uri: t.uri,
         label: t.name,
       });
     });
+    if (t.preview) {
+      const pv = document.createElement('span');
+      pv.className = 'pv-btn';
+      pv.textContent = '\u25B6';
+      pv.title = 'Play the 30s preview (works on free!)';
+      pv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playPreview(t.preview, t.name);
+      });
+      row.appendChild(pv);
+    }
     el.appendChild(row);
   });
   updatePlayingRow();
+}
+
+let previewAudio = null;
+function playPreview(url, name) {
+  if (previewAudio) previewAudio.pause();
+  previewAudio = new Audio(url);
+  previewAudio.volume = 0.9;
+  previewAudio.play().then(() => toast('Preview: ' + name + ' (30s)', 'ok')).catch(() => toast('Preview blocked by the browser - click the page and try again', 'error'));
 }
 
 function updatePlayingRow() {
@@ -522,18 +543,83 @@ $('#radio-form').addEventListener('submit', async (e) => {
 
 $('#radio-stop').addEventListener('click', () => api('/api/radio/stop', { method: 'POST' }).catch(() => {}));
 
+/* ---- browser radio listening (works on free Spotify accounts!) ---- */
+let audioCtx = null;
+let radioQueue = [];       // [{ i, d }] buffered chunks
+let nextPlayAt = 0;        // AudioContext time of the next chunk
+const CHUNK_SAMPLES = 8192;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playChunk(b64) {
+  const ctx = ensureAudio();
+  const raw = atob(b64);
+  const buf = ctx.createBuffer(1, raw.length, 48000);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < raw.length; i++) {
+    let v = raw.charCodeAt(i);
+    if (v > 127) v -= 256;
+    ch[i] = v / 127;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const now = ctx.currentTime;
+  if (nextPlayAt < now + 0.05) nextPlayAt = now + 0.05;
+  src.start(nextPlayAt);
+  nextPlayAt += raw.length / 48000;
+}
+
+function startListening() {
+  ensureAudio();
+  socket.emit('radio:listen');
+  $('#btn-listen').hidden = true;
+  $('#btn-mute').hidden = false;
+}
+
+function stopListening() {
+  socket.emit('radio:mute');
+  radioQueue = [];
+  nextPlayAt = 0;
+  if (audioCtx) audioCtx.close().catch(() => {});
+  audioCtx = null;
+  $('#btn-listen').hidden = false;
+  $('#btn-mute').hidden = true;
+}
+
+$('#btn-listen').addEventListener('click', startListening);
+$('#btn-mute').addEventListener('click', stopListening);
+
+socket.on('ra', ({ d }) => {
+  if (audioCtx) playChunk(d);
+});
+
+socket.on('radio:state', (s) => {
+  if (!s || !s.playing) {
+    if (audioCtx) stopListening();
+    $('#btn-listen').hidden = true;
+    $('#btn-mute').hidden = true;
+  }
+  renderRadio(s);
+});
+
 function renderRadio(s) {
   const el = $('#radio-status');
   if (s && s.playing) {
-    el.textContent = `📻 On air: "${s.title}"${s.by ? ' (by ' + s.by + ')' : ''} — playing on CC speakers`;
+    el.textContent = `📻 On air: "${s.title}"${s.by ? ' (by ' + s.by + ')' : ''} — web + CC speakers`;
     el.classList.add('on');
+    $('#btn-listen').hidden = !!audioCtx;
+    $('#btn-mute').hidden = !audioCtx;
   } else {
     el.textContent = 'Radio is off';
     el.classList.remove('on');
+    $('#btn-listen').hidden = true;
+    $('#btn-mute').hidden = true;
   }
 }
-
-socket.on('radio:state', renderRadio);
 
 /* login result toast */
 const qs = new URLSearchParams(location.search);
