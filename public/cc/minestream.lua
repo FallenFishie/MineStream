@@ -28,6 +28,7 @@ SERVER = (SERVER:gsub("/+$", ""))
 local WS_URL = (SERVER:gsub("^http", "ws")) .. "/cc"
 
 local SCALE = settings.get("minestream.scale")
+if SCALE == nil then SCALE = 0.5 end -- 4x the pixels by default
 local OVERLAY = settings.get("minestream.overlay", true)
 local volume = settings.get("minestream.volume", 1)
 
@@ -95,6 +96,20 @@ local function drawCenter(lines)
     if y <= mh then
       mon.setCursorPos(x, y)
       mon.blit(txt, string.rep("0", #txt), string.rep("f", #txt))
+    end
+  end
+end
+
+-- apply a custom 16-colour palette (server picks optimal colours per GIF)
+local curPal = nil
+local function applyPalette(c)
+  if type(c) ~= "table" or not mon then return end
+  if curPal == c then return end
+  curPal = c
+  for i = 0, 15 do
+    local r, g, b = c[i * 3 + 1], c[i * 3 + 2], c[i * 3 + 3]
+    if r and g and b then
+      pcall(mon.setPaletteColor, 2 ^ i, r * 65536 + g * 256 + b)
     end
   end
 end
@@ -267,7 +282,9 @@ local function handleMessage(msg)
   if not ok or type(data) ~= "table" then return end
   local t = data.t
 
-  if t == "f" then
+  if t == "pal" then
+    applyPalette(data.c)
+  elseif t == "f" then
     renderFrame(data.l)
   elseif t == "off" then
     drawCenter({ "MINESTREAM", "no GIF on air right now -", "paste a link on the website!" })
