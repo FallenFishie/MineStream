@@ -17,7 +17,7 @@ local SERVER = settings.get("minestream.server", "__SERVER_URL__")
 if not SERVER or SERVER == "" or SERVER:find("__SERVER_URL__", 1, true) then
   term.clear()
   term.setCursorPos(1, 1)
-  print("MineStream — CC:Tweaked client")
+  print("MineStream - CC:Tweaked client")
   write("Server URL (e.g. https://minestream.onrender.com): ")
   SERVER = read()
   settings.set("minestream.server", SERVER)
@@ -270,7 +270,7 @@ local function handleMessage(msg)
   if t == "f" then
     renderFrame(data.l)
   elseif t == "off" then
-    monClear()
+    drawCenter({ "MINESTREAM", "no GIF on air right now -", "paste a link on the website!" })
   elseif t == "bld" then
     drawCenter({ "DECODING GIF", "one moment..." })
   elseif t == "note" then
@@ -306,9 +306,11 @@ local function eventLoop(ws)
   while true do
     local ev, a, b = os.pullEvent()
     if ev == "websocket_message" then
-      if a == ws then handleMessage(b) end
+      -- CC:T passes the URL string as the first event param (some versions
+      -- pass the handle) -- accept either so messages are never dropped.
+      if a == WS_URL or a == ws then handleMessage(b) end
     elseif ev == "websocket_closed" then
-      if a == ws then error("reconnect", 0) end
+      if a == WS_URL or a == ws then error("reconnect", 0) end
     elseif ev == "speaker_audio_empty" then
       pumpAudio()
     elseif ev == "timer" and a == ticker then
