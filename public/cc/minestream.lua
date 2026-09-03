@@ -76,6 +76,9 @@ local function rebuildRows()
   rowBlack = string.rep("f", mw)
 end
 
+local mode = "connecting"         -- connecting | decoding | live | off | error
+local modeSince = os.epoch("utc")
+
 -- ---------------------------------------------------------- draw helpers
 
 local function monClear()
@@ -112,6 +115,20 @@ local function applyPalette(c)
       pcall(mon.setPaletteColor, 2 ^ i, r * 65536 + g * 256 + b)
     end
   end
+end
+
+local function drawDecoding()
+  local elapsed = math.floor((os.epoch("utc") - modeSince) / 1000)
+  local dots = string.rep(".", (math.floor(elapsed * 2) % 3) + 1)
+  local lines = {
+    "DECODING GIF" .. dots,
+    elapsed .. "s elapsed",
+  }
+  if elapsed > 45 then
+    lines[#lines + 1] = "big gif + small server cpu ="
+    lines[#lines + 1] = "slow first decode, hang tight!"
+  end
+  drawCenter(lines)
 end
 
 local function say(msg)
@@ -285,14 +302,22 @@ local function handleMessage(msg)
   if t == "pal" then
     applyPalette(data.c)
   elseif t == "f" then
+    mode = "live"
     renderFrame(data.l)
   elseif t == "off" then
+    mode = "off"
     drawCenter({ "MINESTREAM", "no GIF on air right now -", "paste a link on the website!" })
   elseif t == "bld" then
-    drawCenter({ "DECODING GIF", "one moment..." })
+    if mode ~= "decoding" then
+      mode = "decoding"
+      modeSince = os.epoch("utc")
+    end
+    drawDecoding()
   elseif t == "note" then
-    drawCenter({ "VIDEOS DON'T WORK ON", "MONITORS — GIFS ONLY!" })
+    mode = "error"
+    drawCenter({ "VIDEOS DON'T WORK ON", "MONITORS - GIFS ONLY!" })
   elseif t == "gife" then
+    mode = "error"
     drawCenter({ "GIF FAILED :(", string.sub(tostring(data.error), 1, math.max(8, mw - 2)) })
   elseif t == "welcome" then
     if data.spotify then sp = data.spotify end
@@ -332,7 +357,11 @@ local function eventLoop(ws)
       pumpAudio()
     elseif ev == "timer" and a == ticker then
       tick = tick + 1
-      drawOverlay()
+      if mode == "live" then
+        drawOverlay()
+      elseif mode == "decoding" then
+        drawDecoding()
+      end
       ticker = os.startTimer(0.3)
     elseif ev == "monitor_resize" then
       rebuildRows()
