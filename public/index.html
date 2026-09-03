@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MineStream — GIF TV + Spotify</title>
+  <meta name="description" content="A little Minecraft-flavoured TV: loop GIFs with friends and control Spotify together. In glorious colour!" />
+  <link rel="icon" href="/img/tv-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="/img/tv-icon.png" alt="" class="brand-icon" />
+      <span class="brand-name pixel">Mine<span class="green">Stream</span></span>
+      <span class="brand-sub">full-colour GIF TV</span>
+    </div>
+    <div class="top-actions">
+      <span id="viewers" class="pill" title="people watching">1 watching</span>
+      <label class="name-box" title="Your name, shown next to stuff you add">
+        <span class="pixel tiny">NAME</span>
+        <input id="my-name" maxlength="24" placeholder="Steve" autocomplete="off" spellcheck="false" />
+      </label>
+      <a href="/tv" target="_blank" class="btn small" title="Open a fullscreen screen-only view (great for OBS)">TV only</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ==================== TV COLUMN ==================== -->
+    <section class="tv-col">
+      <div class="panel tv-frame">
+        <div class="screen" id="screen">
+          <div id="media-host"></div>
+          <img id="idle" src="/img/idle.png" alt="No signal" draggable="false" />
+          <div class="onair-badge pixel" id="onair-badge"><span class="dot"></span>ON AIR</div>
+          <div class="screen-label" id="screen-label"></div>
+          <div class="scanlines" id="scanlines"></div>
+          <div class="reconnect pixel hidden" id="reconnect">RECONNECTING<span class="blink">...</span></div>
+        </div>
+        <div class="tv-controls">
+          <button class="btn small" id="btn-skip" title="Show the next one">Skip &#9654;</button>
+          <label class="toggle pixel tiny" title="Automatically rotate through the gallery">
+            <input type="checkbox" id="rotate-toggle" />
+            AUTO&#8209;ROTATE
+          </label>
+          <label class="seconds-box pixel tiny">
+            EVERY <input type="number" id="rotate-seconds" min="5" max="300" value="20" /> S
+          </label>
+          <label class="toggle pixel tiny" title="Retro CRT scanlines">
+            <input type="checkbox" id="crt-toggle" />
+            CRT
+          </label>
+          <div class="spacer"></div>
+          <button class="btn small danger" id="btn-clear-gallery" title="Remove all GIFs from the gallery">Wipe gallery</button>
+        </div>
+      </div>
+
+      <form id="gif-form" class="panel air-form">
+        <input id="gif-url" placeholder="Paste a GIF link — Klipy / Tenor / Giphy / Imgur page or a direct .gif / .mp4" autocomplete="off" spellcheck="false" />
+        <button class="btn primary" type="submit">Put on air</button>
+      </form>
+
+      <div class="panel gallery-panel">
+        <div class="panel-head">
+          <h2 class="pixel">LOOP GALLERY</h2>
+          <span class="hint">click a GIF to put it back on air</span>
+        </div>
+        <div id="gallery" class="gallery"><span class="empty">Nothing here yet — paste a GIF link above!</span></div>
+      </div>
+
+      <div class="panel log-panel">
+        <div class="panel-head"><h2 class="pixel">ACTIVITY</h2></div>
+        <ul id="log" class="log"></ul>
+      </div>
+
+      <div class="panel cc-panel">
+        <div class="panel-head">
+          <h2 class="pixel">CC:TWEAKED TV</h2>
+          <span class="hint">watch it in Minecraft!</span>
+        </div>
+        <p class="cc-steps">Craft a <b>computer</b> next to a <b>monitor</b> (bigger = better) and a <b>speaker</b>, then run this on the computer:</p>
+        <div class="codebox">
+          <code id="cc-cmd">wget run &lt;this server&gt;/cc/minestream.lua</code>
+          <button class="btn small" id="cc-copy" type="button">Copy</button>
+        </div>
+        <div class="radio-row">
+          <form id="radio-form" class="air-form">
+            <input id="radio-url" placeholder="Radio for the CC speakers — direct .mp3 / .wav / .ogg link" autocomplete="off" spellcheck="false" />
+            <button class="btn primary" type="submit">Play</button>
+          </form>
+          <button class="btn danger" id="radio-stop" type="button" title="Stop the radio">Stop</button>
+        </div>
+        <div id="radio-status" class="hint radio-status">Radio is off</div>
+        <p class="hint cc-note">
+          Monitors show GIFs in 16-colour dithered widescreen (videos stay web-only).
+          Speakers stream radio links; Spotify shows title + progress on the monitor — its audio stays in Spotify apps (DRM).
+          In-game keys: <b>Q</b> quit, <b>-</b>/<b>=</b> volume.
+        </p>
+      </div>
+    </section>
+
+    <!-- ==================== SPOTIFY COLUMN ==================== -->
+    <aside class="spotify-col">
+      <div class="panel spotify-panel">
+        <div class="panel-head">
+          <h2 class="pixel">SPOTIFY<span class="green">&#9835;</span></h2>
+          <span id="sp-profile" class="hint"></span>
+        </div>
+
+        <!-- not configured -->
+        <div id="sp-setup" class="sp-box hidden">
+          <p>The host needs to add Spotify keys to make the music panel work.</p>
+          <p class="hint">Set <b>SPOTIFY_CLIENT_ID</b> and <b>SPOTIFY_CLIENT_SECRET</b> env vars &mdash; see the README.</p>
+        </div>
+
+        <!-- configured, not logged in -->
+        <div id="sp-login" class="sp-box hidden">
+          <p>Connect a Spotify account and everyone watching can see and control the music.</p>
+          <a class="btn primary" id="btn-login" href="/api/spotify/login">Login with Spotify</a>
+          <p class="hint">Controlling playback needs Spotify Premium. Showing what's playing works on free too.</p>
+        </div>
+
+        <!-- connected -->
+        <div id="sp-live" class="hidden">
+          <div class="np">
+            <img id="np-art" class="np-art" alt="" src="/img/idle.png" draggable="false" />
+            <div class="np-meta">
+              <div id="np-name" class="np-name" title="">Nothing playing</div>
+              <div id="np-artists" class="np-artists"></div>
+              <div id="np-context" class="np-context"></div>
+            </div>
+          </div>
+
+          <div class="progress" id="progress" title="Click to seek">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="times">
+            <span id="time-cur">0:00</span>
+            <span id="time-total">0:00</span>
+          </div>
+
+          <div class="remote">
+            <button class="rbtn pixel" id="btn-shuffle" title="Shuffle">&#128256;</button>
+            <button class="rbtn pixel" id="btn-prev" title="Previous">&#9198;</button>
+            <button class="rbtn big pixel" id="btn-play" title="Play / pause">&#9654;</button>
+            <button class="rbtn pixel" id="btn-next" title="Next">&#9197;</button>
+            <button class="rbtn pixel" id="btn-repeat" title="Repeat">&#128257;</button>
+          </div>
+
+          <div class="vol-row">
+            <span class="pixel tiny">VOL</span>
+            <input type="range" id="vol" min="0" max="100" value="70" />
+            <span id="vol-val" class="hint">70</span>
+          </div>
+
+          <div class="tv-play-row">
+            <button class="btn small" id="btn-play-here" disabled title="Move playback to this browser tab (Premium)">&#9835; Play on this TV</button>
+            <button class="btn small ghost" id="btn-logout" title="Disconnect Spotify">Logout</button>
+          </div>
+
+          <form id="sp-link-form" class="sp-link-form">
+            <input id="sp-link" placeholder="Paste a Spotify playlist / album / track link" autocomplete="off" spellcheck="false" />
+            <button class="btn primary" type="submit">Open</button>
+          </form>
+
+          <div id="playlist" class="playlist hidden"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
