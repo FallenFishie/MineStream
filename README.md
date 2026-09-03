@@ -88,6 +88,9 @@ set minestream.volume 2       -- speaker volume (0–3)
 - **Letterboxing** — the GIF keeps its true aspect ratio (monitor cells aren't square!) with black bars, no more squash/stretch.
 - **Scale 0.5 by default** — 4x the pixels. Set `minestream.scale 1` if you prefer giant chunky pixels.
 
+### Slow first decode?
+Render free runs on 1/10th of a CPU, so a huge GIF's first decode can take a little while - the monitor shows a live elapsed counter while it works. MineStream budgets the work, subsamples oversized GIFs (full loop kept, lower fps), and **caches the result on disk**, so every following play (and every server restart) is instant. Watch the `[cc-gif]` lines in the Render logs to see it work.
+
 ### How it works
 - Every connected computer/monitor gets the **same broadcast** — the server paces GIF frames in real time and streams them as run-length-encoded 16-colour lines that the client slaps onto the monitor with `blit()` (fast!).
 - **Monitors: GIFs only.** Videos (mp4) stay web-only — CC can't decode those. The monitor will tell you so.
